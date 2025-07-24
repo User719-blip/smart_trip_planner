@@ -4,8 +4,9 @@ import 'package:smart_trip_planner/feature/auth/data/datasources/auth_datasource
 import 'package:smart_trip_planner/feature/auth/data/repo/auth_repo_impl.dart';
 import 'package:smart_trip_planner/feature/auth/domain/repo/auth_repo.dart';
 
-/// 🔌 Provides SupabaseAuthDatasource
+///  Provides SupabaseAuthDatasource
 final authDatasourceProvider = Provider<AuthDatasource>((ref) {
+  // ignore: unused_local_variable
   final client = Supabase.instance.client;
   return SupabaseAuthDatasource(); // already has `_client` internally
 });
