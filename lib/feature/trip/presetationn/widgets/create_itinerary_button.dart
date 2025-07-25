@@ -18,7 +18,7 @@ class CreateItineraryButton extends StatelessWidget {
             );
             return;
           }
-         Navigator.of(context).pushReplacement(
+         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => TripLoadingPage(prompt: prompt,),
           ),
