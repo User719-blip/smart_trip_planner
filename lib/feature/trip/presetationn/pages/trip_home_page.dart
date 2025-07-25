@@ -14,7 +14,7 @@ class TripHomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authControllerProvider).value;
     final name = user?.name ?? 'Traveler';
-
+    final promptController = TextEditingController();
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -25,9 +25,9 @@ class TripHomePage extends ConsumerWidget {
             children: [
               _buildHeader(name),
               const SizedBox(height: 20),
-              const PromptInput(),
+               PromptInput(promptController: promptController,),
               const SizedBox(height: 16),
-              const CreateItineraryButton(),
+              CreateItineraryButton(promptController: promptController ,),
               const SizedBox(height: 24),
               const Text(
                 "Offline Saved Itineraries",

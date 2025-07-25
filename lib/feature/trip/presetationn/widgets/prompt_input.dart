@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 class PromptInput extends StatelessWidget {
-  const PromptInput({super.key});
-
+   final TextEditingController promptController ;
+  const PromptInput({super.key, required this.promptController});
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: promptController,
       maxLines: 3,
       decoration: InputDecoration(
         hintText: "7 days in Bali next April...",

@@ -26,21 +26,18 @@ class _TripLoadingPageState extends ConsumerState<TripLoadingPage> {
       final ChatMessageEntity trip = await ref
           .read(tripControllerProvider.notifier)
           .generateTrip(widget.prompt);
-
       // Navigate to result page on success
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => TripResultPage(trip: trip),
-          ),
+          MaterialPageRoute(builder: (_) => TripResultPage(trip: trip)),
         );
       }
     } catch (e) {
       // Show error and go back
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to generate trip: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Failed to generate trip: $e")));
         Navigator.of(context).pop(); // Return to previous page
       }
     }
@@ -55,9 +52,7 @@ class _TripLoadingPageState extends ConsumerState<TripLoadingPage> {
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 12.0),
-            child: CircleAvatar(
-                child : Icon(Icons.add_photo_alternate),
-            ),
+            child: CircleAvatar(child: Icon(Icons.add_photo_alternate)),
           ),
         ],
       ),
@@ -74,9 +69,9 @@ class _TripLoadingPageState extends ConsumerState<TripLoadingPage> {
             const SizedBox(height: 8),
             Text(
               "Sit tight while we plan your perfect trip!",
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.subtitle,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.subtitle),
             ),
           ],
         ),
