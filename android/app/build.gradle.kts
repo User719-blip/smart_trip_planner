@@ -9,7 +9,12 @@ android {
     namespace = "com.example.smart_trip_planner"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
-
+    compileSdkVersion 34
+    
+    dexOptions {
+        javaMaxHeapSize = "4g"
+    }
+    
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -28,6 +33,12 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        ndk {
+            abiFilters {
+                add("armeabi-v7a")
+                add("arm64-v8a")
+            }
+        }
     }
 
     buildTypes {
