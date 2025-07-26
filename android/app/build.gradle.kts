@@ -11,10 +11,6 @@ android {
     compileSdk = 34
     ndkVersion = "27.0.12077973"
     
-    dexOptions {
-        javaMaxHeapSize = "4g"
-    }
-    
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -26,10 +22,10 @@ android {
 
     defaultConfig {
         applicationId = "com.example.smart_trip_planner"
-        minSdk = 21 // Changed from flutter.minSdkVersion to explicit value
+        minSdk = 21
         targetSdk = 34
-        versionCode = 1 // Changed from flutter.versionCode
-        versionName = "1.0" // Changed from flutter.versionName
+        versionCode = 1
+        versionName = "1.0"
         
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
@@ -37,35 +33,19 @@ android {
     }
 
     buildTypes {
-        getByName("release") {
-            signingConfig = signingConfigs.getByName("debug")
-            isMinifyEnabled = false
+        getByName("debug") {
             isShrinkResources = false
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+        }
+        getByName("release") {
+            isShrinkResources = true
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-        }
-        getByName("debug"){
-            isMinifyEnabled = false
-            isShrinkResources = false
-        }
-    }
-    packagingOptions {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
-    buildFeatures {
-        viewBinding = true
-    }
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
