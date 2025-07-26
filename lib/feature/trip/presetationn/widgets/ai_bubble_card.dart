@@ -1,6 +1,5 @@
 // TODO Implement this library.
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class AIBubbleCard extends StatelessWidget {
   final String title;
