@@ -1,3 +1,5 @@
+import com.android.build.api.dsl.ApplicationExtension
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -30,14 +32,11 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         ndk {
-            abiFilters {
-                add("armeabi-v7a")
-                add("arm64-v8a")
-            }
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a")) 
         }
     }
 
