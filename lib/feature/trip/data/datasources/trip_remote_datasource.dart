@@ -5,7 +5,7 @@ import 'package:smart_trip_planner/feature/trip/data/models/trip_plan_model.dart
 
 class GeminiTripDatasource {
   final GenerativeModel model = GenerativeModel(
-    model: 'gemini-pro',
+    model: 'gemini-2.0-flash',
     apiKey: 'AIzaSyC_SYX0OB2k7peiiRn7AMJt2nLG9OOmwt4', // store securely in production
   );
 

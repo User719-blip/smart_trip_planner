@@ -117,7 +117,7 @@ class _TripResultPageState extends ConsumerState<TripResultPage> {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => TripFollowUpPage(),//add this in there trip: currentTrip
+                        builder: (_) => TripFollowUpPage(trip: currentTrip),//add this in there
                       ),
                     );
                   },
