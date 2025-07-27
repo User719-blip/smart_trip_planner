@@ -4,6 +4,7 @@ import 'package:smart_trip_planner/feature/trip/data/datasources/trip_remote_dat
 import 'package:smart_trip_planner/feature/trip/data/repo/trpi_repo_impl.dart';
 import 'package:smart_trip_planner/feature/trip/domain/entity/trip_chat_entity.dart';
 import 'package:smart_trip_planner/feature/trip/domain/repo/trip_repo.dart';
+import 'package:smart_trip_planner/feature/trip/domain/usecase/deleate_trip_chat.dart';
 import 'package:smart_trip_planner/feature/trip/domain/usecase/generate_trip_usecase.dart';
 import 'package:smart_trip_planner/feature/trip/domain/usecase/save_trip_history.dart';
 
@@ -20,6 +21,23 @@ final saveTripOfflineProvider = Provider<SaveTripOffline>((ref) {
 final tripRepositoryProvider = Provider<TripRepository>((ref) {
   return GeminiTripRepository(GeminiTripDatasource());
 });
+
+final watchTripChatsProvider = StreamProvider.family<List<ChatMessageEntity>, String>((ref, tripId) {
+  final repo = ref.watch(tripRepositoryProvider);
+  return repo.watchTripChats(tripId);
+});
+
+final deleteTripProvider = Provider<DeleteTripMessage>((ref) {
+  final repo = ref.read(tripRepositoryProvider);
+  return DeleteTripMessage(repo);
+});
+
+
+final saveTripMessageProvider = Provider((ref) {
+  final repo = ref.watch(tripRepositoryProvider);
+  return (ChatMessageEntity message) => repo.saveMessage(message);
+});
+
 
 class TripController extends StateNotifier<AsyncValue<ChatMessageEntity?>> {
   final GenerateTripUseCase generateTripUsecase;

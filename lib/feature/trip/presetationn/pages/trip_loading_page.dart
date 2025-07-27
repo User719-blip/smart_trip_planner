@@ -52,7 +52,9 @@ class _TripLoadingPageState extends ConsumerState<TripLoadingPage> {
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 12.0),
-            child: CircleAvatar(child: Icon(Icons.add_photo_alternate)),
+            child: CircleAvatar(
+              child: Text("S"), // Placeholder, update to profile image later
+            ),
           ),
         ],
       ),

@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_trip_planner/core/theme/theme.dart';
+import 'package:smart_trip_planner/feature/profile/presentation/pages/profile_page.dart';
+import 'package:smart_trip_planner/feature/profile/presentation/providers/profile_controller.dart';
 import 'package:smart_trip_planner/feature/trip/data/models/trip_plan_local_model.dart';
 import 'package:smart_trip_planner/feature/trip/data/models/trip_plan_model.dart';
 import 'package:smart_trip_planner/feature/trip/domain/entity/trip_chat_entity.dart';
@@ -28,36 +31,35 @@ class _TripFollowUpPageState extends ConsumerState<TripFollowUpPage> {
   void initState() {
     super.initState();
     currentTrip = widget.trip;
+    // Save the initial trip if not already saved
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(saveTripMessageProvider)(widget.trip);
+    });
   }
 
+  void _handleMic() {}
   Future<void> _handleSend() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    // Clear the input immediately
     _controller.clear();
-    FocusScope.of(context).unfocus(); // Hide keyboard
+    FocusScope.of(context).unfocus();
 
     try {
       final newTrip = await ref
           .read(tripControllerProvider.notifier)
-          .generateTrip(
-            text,
-          ); // You can use generateFollowUp() if you separate it
+          .generateTrip(text);
 
       setState(() {
         currentTrip = newTrip;
       });
+
+      await ref.read(saveTripMessageProvider)(newTrip);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Failed to refine: $e")));
     }
-  }
-
-  void _handleMic() {
-    debugPrint("Mic tapped");
-    // TODO: Implement voice input
   }
 
   Future<void> _handleCopy() async {
@@ -92,6 +94,7 @@ class _TripFollowUpPageState extends ConsumerState<TripFollowUpPage> {
             )
             .toList(),
       );
+
       await ref.read(saveTripOfflineProvider).call(localTrip);
 
       ScaffoldMessenger.of(
@@ -113,6 +116,8 @@ class _TripFollowUpPageState extends ConsumerState<TripFollowUpPage> {
       setState(() {
         currentTrip = newTrip;
       });
+
+      await ref.read(saveTripMessageProvider)(newTrip);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -122,22 +127,41 @@ class _TripFollowUpPageState extends ConsumerState<TripFollowUpPage> {
 
   @override
   Widget build(BuildContext context) {
-    final parsedPlan = TripPlanModel.fromJson(jsonDecode(currentTrip.message));
+    final tripId = widget.trip.tripId;
+    final chatStream = ref.watch(watchTripChatsProvider(tripId));
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         leading: const BackButton(),
         title: Text(
-          "${currentTrip.prompt.split(" ").take(4).join(" ")}...",
+          "${widget.trip.prompt.split(" ").take(4).join(" ")}...",
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 12.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.green,
-              child: Text("S", style: TextStyle(color: Colors.white)),
+            padding: const EdgeInsets.only(right: 12.0),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const ProfilePage()));
+              },
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final profile = ref.watch(profileControllerProvider);
+                  if (profile.imagePath != null) {
+                    return CircleAvatar(
+                      backgroundImage: FileImage(File(profile.imagePath!)),
+                    );
+                  } else {
+                    return const CircleAvatar(
+                      backgroundColor: Colors.green,
+                      child: Text("S", style: TextStyle(color: Colors.white)),
+                    );
+                  }
+                },
+              ),
             ),
           ),
         ],
@@ -145,22 +169,45 @@ class _TripFollowUpPageState extends ConsumerState<TripFollowUpPage> {
       body: Column(
         children: [
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                UserBubbleCard(prompt: currentTrip.prompt),
-                const SizedBox(height: 12),
-                AIBubbleCard(
-                  title: parsedPlan.title,
-                  message: currentTrip.message,
-                  locationText: parsedPlan.days.first.items.first.location,
-                  durationText:
-                      "${parsedPlan.startDate} - ${parsedPlan.endDate}",
-                  onCopy: _handleCopy,
-                  onSaveOffline: _handleSaveOffline,
-                  onRegenerate: _handleRegenerate,
-                ),
-              ],
+            child: chatStream.when(
+              data: (messages) {
+                final fullChat = [...messages, currentTrip];
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: fullChat.length,
+                  itemBuilder: (context, index) {
+                    final message = fullChat[index];
+                    final isUser = message.sender == 'user';
+
+                    if (isUser) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: UserBubbleCard(prompt: message.prompt),
+                      );
+                    } else {
+                      final parsed = TripPlanModel.fromJson(
+                        jsonDecode(message.message),
+                      );
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: AIBubbleCard(
+                          title: parsed.title,
+                          message: message.message,
+                          locationText: parsed.days.first.items.first.location,
+                          durationText:
+                              "${parsed.startDate} - ${parsed.endDate}",
+                          onCopy: _handleCopy,
+                          onSaveOffline: _handleSaveOffline,
+                          onRegenerate: _handleRegenerate,
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) => Center(child: Text("Error: $err")),
             ),
           ),
           RefineInputBar(

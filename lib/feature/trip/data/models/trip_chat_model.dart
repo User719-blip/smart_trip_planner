@@ -66,6 +66,14 @@ class TripChatModel {
     message = entity.message;
     timestamp = entity.timestamp;
   }
+  
+  TripChatModel.create({
+    required this.tripId,
+    required this.sender,
+    required this.prompt,
+    required this.message,
+    required this.timestamp,
+  });
 
   // Convert to entity
   ChatMessageEntity toEntity() {

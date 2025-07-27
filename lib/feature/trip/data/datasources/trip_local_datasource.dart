@@ -17,6 +17,8 @@ class TripLocalDatasource {
     );
   }
 
+
+  
   Future<void> saveTrip(TripPlanLocalModel trip) async {
     final isar = await _db;
     await isar.writeTxn(() async {

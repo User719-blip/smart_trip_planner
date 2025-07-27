@@ -1,8 +1,11 @@
 // trip_result_page.dart
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_trip_planner/core/theme/theme.dart';
+import 'package:smart_trip_planner/feature/profile/presentation/pages/profile_page.dart';
+import 'package:smart_trip_planner/feature/profile/presentation/providers/profile_controller.dart';
 import 'package:smart_trip_planner/feature/trip/data/models/trip_plan_local_model.dart';
 import 'package:smart_trip_planner/feature/trip/data/models/trip_plan_model.dart';
 import 'package:smart_trip_planner/feature/trip/domain/entity/trip_chat_entity.dart';
@@ -44,21 +47,37 @@ class _TripResultPageState extends ConsumerState<TripResultPage> {
     // ignore: unused_local_variable
     final state = ref.watch(tripControllerProvider);
 
-    final parsedPlan = TripPlanModel.fromJson(
-      jsonDecode(currentTrip.message),
-    );
+    final parsedPlan = TripPlanModel.fromJson(jsonDecode(currentTrip.message));
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text("Itinerary Created 🌴"),
         leading: BackButton(),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 12.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.green,
-              child: Text("S"), // replace with profile pic
+            padding: const EdgeInsets.only(right: 12.0),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const ProfilePage()));
+              },
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final profile = ref.watch(profileControllerProvider);
+                  if (profile.imagePath != null) {
+                    return CircleAvatar(
+                      backgroundImage: FileImage(File(profile.imagePath!)),
+                    );
+                  } else {
+                    return const CircleAvatar(
+                      backgroundColor: Colors.green,
+                      child: Text("S", style: TextStyle(color: Colors.white)),
+                    );
+                  }
+                },
+              ),
             ),
           ),
         ],
@@ -89,21 +108,14 @@ class _TripResultPageState extends ConsumerState<TripResultPage> {
                       ...parsedPlan.days[i].items.map(
                         (item) => Padding(
                           padding: const EdgeInsets.only(bottom: 4),
-                          child: Text("• ${item.time}: ${item.activity} at ${item.location}"),
+                          child: Text(
+                            "• ${item.time}: ${item.activity} at ${item.location}",
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
                     ],
                     const Divider(),
-                    Row(
-                      children: const [
-                        Icon(Icons.location_pin, color: Colors.red),
-                        SizedBox(width: 6),
-                        Text("Open in maps", style: TextStyle(color: Colors.blue)),
-                        Spacer(),
-                        Text("Mumbai to Bali, Indonesia | 11hrs 5mins"),
-                      ],
-                    )
                   ],
                 ),
               ),
@@ -117,7 +129,9 @@ class _TripResultPageState extends ConsumerState<TripResultPage> {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => TripFollowUpPage(trip: currentTrip),//add this in there
+                        builder: (_) => TripFollowUpPage(
+                          trip: currentTrip,
+                        ), //add this in there
                       ),
                     );
                   },
