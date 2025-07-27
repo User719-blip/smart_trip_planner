@@ -12,22 +12,22 @@ workflows:
         script: flutter pub get
       - name: Build APK
         script: flutter build apk --release
-      - name: List build directory contents
+      - name: Find and copy APK
         script: |
-          echo "=== Build directory structure ==="
-          find build -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
-          ls -la build/app/outputs/ 2>/dev/null || echo "outputs directory not found"
+          echo "=== Searching for APK files ==="
+          APK_PATH=$(find build -name "*.apk" -type f | head -1)
+          if [ -n "$APK_PATH" ]; then
+            echo "Found APK at: $APK_PATH"
+            mkdir -p artifacts
+            cp "$APK_PATH" artifacts/app-release.apk
+            echo "APK copied to artifacts/app-release.apk"
+          else
+            echo "No APK file found!"
+            echo "Build directory contents:"
+            find build -type f -name "*.apk" 2>/dev/null || echo "No APK files found anywhere"
+            ls -la build/ 2>/dev/null || echo "Build directory doesn't exist"
+          fi
     artifacts:
+      - artifacts/*.apk
       - build/**/*.apk
       - build/**/*.aab
-      - build/app/outputs/**/*.apk
-      - build/app/outputs/flutter-apk/*.apk
-      - build/app/outputs/apk/**/*.apk
-      - build/app/outputs/bundle/release/*.aab
-    publishing:
-      email:
-        recipients:
-          - iamfake1815@gmail.com
-        notify:
-          success: true
-          failure: true
