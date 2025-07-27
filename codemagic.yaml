@@ -10,48 +10,80 @@ workflows:
         script: flutter clean
       - name: Get Flutter packages
         script: flutter pub get
-      - name: Build APK with detailed logging
+        
+      - name: Check Flutter doctor
+        script: flutter doctor -v
+        
+      - name: Check Android setup
         script: |
-          echo "=== Starting APK build ==="
-          flutter build apk --release --verbose
-          echo "=== Build command completed ==="
+          echo "=== Android SDK info ==="
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+          ls -la $ANDROID_HOME 2>/dev/null || echo "Android SDK not found"
           
-      - name: Debug build outputs
+      - name: Build APK with Gradle logs
         script: |
-          echo "=== Searching for build outputs ==="
+          echo "=== Starting Flutter build ==="
+          flutter build apk --release --verbose 2>&1 | tee flutter_build.log
+          BUILD_EXIT_CODE=${PIPESTATUS[0]}
+          echo "Flutter build exit code: $BUILD_EXIT_CODE"
+          
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo "=== Flutter build failed, showing logs ==="
+            tail -50 flutter_build.log
+            exit $BUILD_EXIT_CODE
+          fi
+          
+      - name: Run Gradle directly for more info
+        script: |
+          echo "=== Running Gradle directly ==="
+          cd android
+          ./gradlew assembleRelease --stacktrace --info 2>&1 | tee ../gradle_direct.log
+          GRADLE_EXIT_CODE=$?
+          cd ..
+          
+          echo "Gradle direct exit code: $GRADLE_EXIT_CODE"
+          if [ $GRADLE_EXIT_CODE -ne 0 ]; then
+            echo "=== Gradle failed, showing detailed logs ==="
+            tail -100 gradle_direct.log
+            exit $GRADLE_EXIT_CODE
+          fi
+          
+      - name: Check all possible output locations
+        script: |
+          echo "=== Comprehensive output search ==="
           echo "Current directory: $(pwd)"
-          echo "Build directory exists: $(test -d build && echo 'YES' || echo 'NO')"
           
+          # Check Flutter build outputs
+          find . -name "*.apk" -type f 2>/dev/null | while read apk_file; do
+            echo "Found APK: $apk_file ($(ls -lh "$apk_file" | awk '{print $5}'))"
+          done
+          
+          # Check Android build outputs
+          if [ -d android/app/build ]; then
+            echo "=== Android app build directory ==="
+            find android/app/build -name "*.apk" -type f 2>/dev/null
+          fi
+          
+          # Check Flutter build outputs
           if [ -d build ]; then
-            echo "=== Build directory structure ==="
-            find build -type f -name "*.apk" 2>/dev/null | head -10
-            
-            echo "=== App outputs directory ==="
-            ls -la build/app/outputs/ 2>/dev/null || echo "outputs directory not found"
-            
-            echo "=== Checking common APK locations ==="
-            ls -la build/app/outputs/apk/release/ 2>/dev/null || echo "apk/release not found"
-            ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo "flutter-apk not found"
-            
-            echo "=== All files in build directory ==="
-            find build -type f -name "*.apk" -exec ls -la {} \;
-          else
-            echo "Build directory does not exist!"
+            echo "=== Flutter build directory ==="
+            find build -name "*.apk" -type f 2>/dev/null
           fi
           
-      - name: Copy APK if found
-        script: |
-          mkdir -p artifacts
-          APK_FILE=$(find build -name "*.apk" -type f | head -1)
-          if [ -n "$APK_FILE" ]; then
-            echo "Found APK: $APK_FILE"
-            cp "$APK_FILE" artifacts/app-release.apk
-            ls -la artifacts/
-          else
-            echo "No APK file found - build may have failed silently"
-            exit 1
-          fi
+          # List all directories to see structure
+          echo "=== Project structure ==="
+          ls -la
+          
+          echo "=== Build directory structure ==="
+          ls -la build/ 2>/dev/null || echo "No build directory"
+          
+          echo "=== Android build structure ==="
+          ls -la android/app/build/outputs/ 2>/dev/null || echo "No android build outputs"
           
     artifacts:
-      - artifacts/*.apk
-      - build/**/*.apk
+      - "**/*.apk"
+      - flutter_build.log
+      - gradle_direct.log
+      - build/**/*
+      - android/app/build/outputs/**/*

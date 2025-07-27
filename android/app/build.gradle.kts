@@ -1,5 +1,3 @@
-import com.android.build.api.dsl.ApplicationExtension
-
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -20,6 +18,17 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
+    // Add signing configs
+    signingConfigs {
+        create("release") {
+            // Use debug keystore for release (temporary fix)
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.smart_trip_planner"
         minSdk = 21
@@ -34,18 +43,15 @@ android {
 
     buildTypes {
         getByName("debug") {
-            isShrinkResources = false
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            isShrinkResources = false
+            isDebuggable = true
         }
         getByName("release") {
-            isShrinkResources = true
-            isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+            isShrinkResources = false
+            isDebuggable = false
+            signingConfig = signingConfigs.getByName("debug") // Use debug signing for now
         }
     }
 }
