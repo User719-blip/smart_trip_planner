@@ -12,8 +12,17 @@ workflows:
         script: flutter pub get
       - name: Build APK
         script: flutter build apk --release
+      - name: List build directory contents
+        script: |
+          echo "=== Build directory structure ==="
+          find build -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
+          ls -la build/app/outputs/ 2>/dev/null || echo "outputs directory not found"
     artifacts:
+      - build/**/*.apk
+      - build/**/*.aab
+      - build/app/outputs/**/*.apk
       - build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/apk/**/*.apk
       - build/app/outputs/bundle/release/*.aab
     publishing:
       email:
