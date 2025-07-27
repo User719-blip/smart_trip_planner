@@ -10,24 +10,48 @@ workflows:
         script: flutter clean
       - name: Get Flutter packages
         script: flutter pub get
-      - name: Build APK
-        script: flutter build apk --release
-      - name: Find and copy APK
+      - name: Build APK with detailed logging
         script: |
-          echo "=== Searching for APK files ==="
-          APK_PATH=$(find build -name "*.apk" -type f | head -1)
-          if [ -n "$APK_PATH" ]; then
-            echo "Found APK at: $APK_PATH"
-            mkdir -p artifacts
-            cp "$APK_PATH" artifacts/app-release.apk
-            echo "APK copied to artifacts/app-release.apk"
+          echo "=== Starting APK build ==="
+          flutter build apk --release --verbose
+          echo "=== Build command completed ==="
+          
+      - name: Debug build outputs
+        script: |
+          echo "=== Searching for build outputs ==="
+          echo "Current directory: $(pwd)"
+          echo "Build directory exists: $(test -d build && echo 'YES' || echo 'NO')"
+          
+          if [ -d build ]; then
+            echo "=== Build directory structure ==="
+            find build -type f -name "*.apk" 2>/dev/null | head -10
+            
+            echo "=== App outputs directory ==="
+            ls -la build/app/outputs/ 2>/dev/null || echo "outputs directory not found"
+            
+            echo "=== Checking common APK locations ==="
+            ls -la build/app/outputs/apk/release/ 2>/dev/null || echo "apk/release not found"
+            ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo "flutter-apk not found"
+            
+            echo "=== All files in build directory ==="
+            find build -type f -name "*.apk" -exec ls -la {} \;
           else
-            echo "No APK file found!"
-            echo "Build directory contents:"
-            find build -type f -name "*.apk" 2>/dev/null || echo "No APK files found anywhere"
-            ls -la build/ 2>/dev/null || echo "Build directory doesn't exist"
+            echo "Build directory does not exist!"
           fi
+          
+      - name: Copy APK if found
+        script: |
+          mkdir -p artifacts
+          APK_FILE=$(find build -name "*.apk" -type f | head -1)
+          if [ -n "$APK_FILE" ]; then
+            echo "Found APK: $APK_FILE"
+            cp "$APK_FILE" artifacts/app-release.apk
+            ls -la artifacts/
+          else
+            echo "No APK file found - build may have failed silently"
+            exit 1
+          fi
+          
     artifacts:
       - artifacts/*.apk
       - build/**/*.apk
-      - build/**/*.aab
