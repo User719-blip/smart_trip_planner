@@ -1,5 +1,3 @@
-
-
 class TripPlanModel {
   final String title;
   final String startDate;
@@ -21,6 +19,15 @@ class TripPlanModel {
       days: List<TripDay>.from(json['days'].map((x) => TripDay.fromJson(x))),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'startDate': startDate,
+      'endDate': endDate,
+      'days': days.map((d) => d.toJson()).toList(),
+    };
+  }
 }
 
 class TripDay {
@@ -40,6 +47,14 @@ class TripDay {
       summary: json['summary'],
       items: List<TripItem>.from(json['items'].map((x) => TripItem.fromJson(x))),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'date': date,
+      'summary': summary,
+      'items': items.map((i) => i.toJson()).toList(),
+    };
   }
 }
 
@@ -61,5 +76,12 @@ class TripItem {
       location: json['location'],
     );
   }
-}
 
+  Map<String, dynamic> toJson() {
+    return {
+      'time': time,
+      'activity': activity,
+      'location': location,
+    };
+  }
+}
