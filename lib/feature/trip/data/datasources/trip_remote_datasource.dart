@@ -35,17 +35,25 @@ class GeminiTripDatasource {
 
     final jsonRaw = response.text?.trim();
     if (jsonRaw == null) throw Exception("Gemini returned null response");
+    if (jsonRaw.toLowerCase().contains("need more information")) {
+      throw Exception(
+        "AI needs more info. Please be more specific in your prompt.",
+      );
+    }
     final cleaned = cleanJson(jsonRaw);
     final decoded = jsonDecode(cleaned);
     return TripPlanModel.fromJson(decoded);
   }
 
-  String cleanJson(String raw) {
-    final cleaned = raw
-        .replaceAll(RegExp(r"^```(json)?", caseSensitive: false), "")
-        .replaceAll("```", "")
-        .trim();
-    return cleaned;
+  String cleanJson(String input) {
+    final startIndex = input.indexOf('{');
+    final endIndex = input.lastIndexOf('}');
+    if (startIndex == -1 || endIndex == -1 || endIndex <= startIndex) {
+      throw FormatException('No valid JSON object found');
+    }
+
+    final jsonString = input.substring(startIndex, endIndex + 1);
+    return jsonString;
   }
 
   // Optional: streaming token-by-token response
