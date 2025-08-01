@@ -31,7 +31,7 @@ class GeminiTripRepository implements TripRepository {
   }
 
  @override
-Future<void> saveTripChat(ChatMessageEntity chat) async {
+ Future<void> saveTripChat(ChatMessageEntity chat) async {
 
   final chatModel = TripChatModel.fromEntity(chat);
   await isar?.writeTxn(() async {

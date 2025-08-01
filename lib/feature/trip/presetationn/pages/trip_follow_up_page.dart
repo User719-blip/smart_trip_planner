@@ -185,16 +185,40 @@ class _TripFollowUpPageState extends ConsumerState<TripFollowUpPage> {
                         child: UserBubbleCard(prompt: message.prompt),
                       );
                     } else {
-                      final parsed = TripPlanModel.fromJson(
-                        jsonDecode(message.message),
-                      );
+                      // Try decoding JSON safely
+                      TripPlanModel? parsed;
+                      try {
+                        parsed = TripPlanModel.fromJson(
+                          jsonDecode(message.message),
+                        );
+                      } catch (e) {
+                        debugPrint(
+                          "⚠️ Failed to parse AI message JSON: $e\n${message.message}",
+                        );
+                        return const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Text(
+                            "⚠️ Failed to parse trip plan.",
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        );
+                      }
+
+                      // If parsed is still null, skip rendering
+                      if (parsed == null) {
+                        return const SizedBox();
+                      }
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: AIBubbleCard(
                           title: parsed.title,
                           message: message.message,
-                          locationText: parsed.days.first.items.first.location,
+                          locationText:
+                              parsed.days.isNotEmpty &&
+                                  parsed.days.first.items.isNotEmpty
+                              ? parsed.days.first.items.first.location
+                              : 'Location not available',
                           durationText:
                               "${parsed.startDate} - ${parsed.endDate}",
                           onCopy: _handleCopy,
