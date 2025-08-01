@@ -78,7 +78,7 @@ class TripChatModel {
   // Convert to entity
   ChatMessageEntity toEntity() {
     return ChatMessageEntity(
-      id: id.toString(),
+      id: id,
       tripId: tripId,
       sender: sender,
       prompt: prompt,

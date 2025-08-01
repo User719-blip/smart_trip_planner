@@ -12,5 +12,5 @@ abstract class TripRepository {
 
   Future<void> saveMessage(ChatMessageEntity message) ;
 
-  Future<void> deleteTripChat(String id) ;
+  Future<void> deleteTripChat(int id) ;
 }

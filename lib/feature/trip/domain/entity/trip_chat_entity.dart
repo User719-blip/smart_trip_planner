@@ -1,5 +1,5 @@
 class ChatMessageEntity {
-  final String id;
+  final int id;
   final String tripId;
   final String sender; // 'user' or 'ai'
   final String prompt;

@@ -5,5 +5,5 @@ class DeleteTripMessage {
 
   DeleteTripMessage(this.repo);
 
-  Future<void> call(String id) => repo.deleteTripChat(id);
+  Future<void> call(int id) => repo.deleteTripChat(id);
 }

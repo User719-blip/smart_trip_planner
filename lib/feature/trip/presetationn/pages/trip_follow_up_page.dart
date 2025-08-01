@@ -38,12 +38,25 @@ class _TripFollowUpPageState extends ConsumerState<TripFollowUpPage> {
   }
 
   void _handleMic() {}
+
   Future<void> _handleSend() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
     _controller.clear();
     FocusScope.of(context).unfocus();
+
+    // ✅ Save user message first
+    final userMessage = ChatMessageEntity(
+      id: DateTime.now().millisecondsSinceEpoch,
+      tripId: widget.trip.tripId,
+      sender: 'user',
+      prompt: text,
+      message: text,
+      timestamp: DateTime.now(),
+    );
+
+    await ref.read(saveTripMessageProvider)(userMessage);
 
     try {
       final newTrip = await ref

@@ -11,16 +11,16 @@ class TripLocalDatasource {
     _db = _initIsar();
   }
 
+  Future<Isar> get database => _db; // added a public getter
+
   Future<Isar> _initIsar() async {
     final dir = await getApplicationDocumentsDirectory();
-    return await Isar.open(
-      [TripPlanLocalModelSchema],
-      directory: dir.path,
-    );
+    return await Isar.open([
+      TripPlanLocalModelSchema,
+      TripChatModelSchema,
+    ], directory: dir.path);
   }
 
-
-  
   Future<void> saveTrip(TripPlanLocalModel trip) async {
     final isar = await _db;
     await isar.writeTxn(() async {
@@ -29,16 +29,32 @@ class TripLocalDatasource {
   }
 
   Stream<List<ChatMessageEntity>> getAllMessages() async* {
-  final isar = await _db;
+    final isar = await _db;
 
-  yield* isar.tripChatModels
-      .where()
-      .sortByTimestampDesc()
-      .watch(fireImmediately: true)
-      .map((models) => models.map((m) => m.toEntity()).toList());
-}
+    yield* isar.tripChatModels
+        .where()
+        .sortByTimestampDesc()
+        .watch(fireImmediately: true)
+        .map((models) => models.map((m) => m.toEntity()).toList());
+  }
 
+  Future<void> saveChatMessage(TripChatModel chatModel) async {
+    final isar = await _db;
+    await isar.writeTxn(() async {
+      await isar.tripChatModels.put(chatModel);
+    });
+  }
 
+  Stream<List<ChatMessageEntity>> getMessagesByTripId(String tripId) async* {
+    final isar = await _db;
+    yield* isar.tripChatModels
+        .filter()
+        .tripIdEqualTo(tripId)
+        .sortByTimestampDesc()
+        .watch(fireImmediately: true)
+        .map((models) => models.map((m) => m.toEntity()).toList());
+  }
+  
   Future<List<TripPlanLocalModel>> getSavedTrips() async {
     final isar = await _db;
     return await isar.tripPlanLocalModels.where().findAll();

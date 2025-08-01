@@ -7,7 +7,7 @@ import 'package:smart_trip_planner/feature/trip/domain/entity/trip_chat_entity.d
 
 extension TripChatModelMapper on TripChatModel {
   ChatMessageEntity toEntity() => ChatMessageEntity(
-        id: id.toString(),
+        id: id,
         tripId: tripId,
         sender: sender,
         prompt: prompt,

@@ -33,7 +33,7 @@ class SavedItinerariesList extends ConsumerWidget {
             final chat = trips[index];
 
             return Dismissible(
-              key: Key(chat.id),
+              key: Key(chat.id as String),
               direction: DismissDirection.endToStart,
               background: Container(
                 color: Colors.red,
