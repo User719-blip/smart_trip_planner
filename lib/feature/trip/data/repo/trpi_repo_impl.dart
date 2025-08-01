@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:smart_trip_planner/feature/trip/data/datasources/trip_local_datasource.dart';
 import 'package:smart_trip_planner/feature/trip/data/datasources/trip_remote_datasource.dart';
 import 'package:smart_trip_planner/feature/trip/data/models/trip_chat_model.dart';
@@ -41,15 +43,35 @@ class GeminiTripRepository implements TripRepository {
     });
   }
   
-  @override
-  Future<ChatMessageEntity> generateFullTripPlan(String prompt) {
-    // TODO: implement generateFullTripPlan
-    throw UnimplementedError();
+   @override
+  Future<ChatMessageEntity> generateFullTripPlan(String prompt) async {
+    try {
+      // Generate trip plan using the remote datasource
+      final tripPlan = await datasource.generateTripPlan(prompt);
+      
+      // Create a ChatMessageEntity from the generated plan
+      final chatMessage = ChatMessageEntity(
+        id: DateTime.now().millisecondsSinceEpoch,
+        tripId: tripPlan.title, // Use trip title as tripId
+        sender: 'ai',
+        prompt: prompt,
+        message: jsonEncode(tripPlan.toJson()), // Convert trip plan to JSON string
+        timestamp: DateTime.now(),
+      );
+      
+      // Save the generated message to local database
+      await saveMessage(chatMessage);
+      
+      return chatMessage;
+    } catch (e) {
+      // Re-throw the exception to be handled by the caller
+      rethrow;
+    }
   }
   
   @override
   Stream<String> streamTripPlan(String prompt) {
-    // TODO: implement streamTripPlan
-    throw UnimplementedError();
+    // Use the streaming method from the remote datasource
+    return datasource.streamTripPlan(prompt);
   }
 }
