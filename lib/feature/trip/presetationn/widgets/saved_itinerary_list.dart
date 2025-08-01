@@ -5,9 +5,10 @@ import 'package:smart_trip_planner/feature/trip/domain/usecase/get_trip_history.
 import 'package:smart_trip_planner/feature/trip/presetationn/controller/trip_controller.dart';
 import 'package:smart_trip_planner/feature/trip/presetationn/pages/trip_follow_up_page.dart';
 
-final getTripHistoryProvider = Provider<GetTripHistory>((ref) {
-  final repo = ref.watch(tripRepositoryProvider); // <-- Your implemented repo
-  return GetTripHistory(repo);
+/// Provider to return a stream of all saved ChatMessageEntities
+final getTripHistoryProvider = Provider<Stream<List<ChatMessageEntity>>>((ref) {
+  final repo = ref.watch(tripRepositoryProvider);
+  return repo.getChatHistory(); // Your implemented method
 });
 
 class SavedItinerariesList extends ConsumerWidget {
@@ -15,10 +16,10 @@ class SavedItinerariesList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tripStream = ref.watch(getTripHistoryProvider).call();
+    final chatStream = ref.watch(getTripHistoryProvider);
 
     return StreamBuilder<List<ChatMessageEntity>>(
-      stream: tripStream,
+      stream: chatStream,
       builder: (context, snapshot) {
         final trips = snapshot.data ?? [];
 
@@ -73,6 +74,7 @@ class SavedItinerariesList extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                subtitle: Text(chat.timestamp.toLocal().toString()),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(

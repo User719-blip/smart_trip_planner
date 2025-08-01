@@ -19,7 +19,9 @@ final saveTripOfflineProvider = Provider<SaveTripOffline>((ref) {
 
  
 final tripRepositoryProvider = Provider<TripRepository>((ref) {
-  return GeminiTripRepository(GeminiTripDatasource());
+  final remote = GeminiTripDatasource();         // Your Gemini API handler
+  final local = TripLocalDatasource();           // Your Isar-based local source
+  return GeminiTripRepository(remote, local);    // ✅ Pass both
 });
 
 final watchTripChatsProvider = StreamProvider.family<List<ChatMessageEntity>, String>((ref, tripId) {

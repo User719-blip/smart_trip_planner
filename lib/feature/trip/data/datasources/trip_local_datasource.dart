@@ -1,6 +1,8 @@
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:smart_trip_planner/feature/trip/data/models/trip_chat_model.dart';
 import 'package:smart_trip_planner/feature/trip/data/models/trip_plan_local_model.dart';
+import 'package:smart_trip_planner/feature/trip/domain/entity/trip_chat_entity.dart';
 
 class TripLocalDatasource {
   late Future<Isar> _db;
@@ -25,6 +27,17 @@ class TripLocalDatasource {
       await isar.tripPlanLocalModels.put(trip);
     });
   }
+
+  Stream<List<ChatMessageEntity>> getAllMessages() async* {
+  final isar = await _db;
+
+  yield* isar.tripChatModels
+      .where()
+      .sortByTimestampDesc()
+      .watch(fireImmediately: true)
+      .map((models) => models.map((m) => m.toEntity()).toList());
+}
+
 
   Future<List<TripPlanLocalModel>> getSavedTrips() async {
     final isar = await _db;
