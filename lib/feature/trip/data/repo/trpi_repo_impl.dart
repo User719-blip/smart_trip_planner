@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:isar/isar.dart';
+import 'package:smart_trip_planner/feature/trip/data/datasources/trip_local_datasource.dart';
 import 'package:smart_trip_planner/feature/trip/data/datasources/trip_remote_datasource.dart';
 import 'package:smart_trip_planner/feature/trip/data/models/trip_chat_model.dart';
 import 'package:smart_trip_planner/feature/trip/domain/entity/trip_chat_entity.dart';
@@ -8,9 +9,11 @@ import 'package:smart_trip_planner/feature/trip/domain/repo/trip_repo.dart';
 import 'package:smart_trip_planner/feature/trip/mapper/trip_chat_mapper.dart';
 class GeminiTripRepository implements TripRepository {
   final GeminiTripDatasource datasource;
+  final TripLocalDatasource localDatasource; // 👈 inject local data source
+
   final isar = Isar.getInstance();
   
-  GeminiTripRepository(this.datasource);
+  GeminiTripRepository(this.datasource, this.localDatasource);
 
   @override
   Stream<String> streamTripPlan(String prompt) {
@@ -40,8 +43,7 @@ class GeminiTripRepository implements TripRepository {
 }
   @override
   Stream<List<ChatMessageEntity>> getChatHistory() {
-    // Return local chat history - implement later
-    return const Stream.empty();
+     return localDatasource.getAllMessages();
   }
   
 @override
