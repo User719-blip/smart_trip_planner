@@ -17,12 +17,26 @@ workflows:
           echo "=== Getting Flutter packages ==="
           flutter pub get
         
+      - name: Generate Isar files
+        script: |
+          echo "=== Generating Isar schema files ==="
+          flutter packages pub run build_runner build --delete-conflicting-outputs || echo "Build runner failed, continuing..."
+        
       - name: Create minimal Android setup
         script: |
           echo "=== Creating minimal Android setup ==="
           
           # Remove problematic files
           rm -f android/build.gradle.kts android/settings.gradle.kts android/app/build.gradle.kts
+          
+          # Create gradle wrapper if missing
+          cd android
+          if [ ! -f gradlew ]; then
+            echo "Creating gradle wrapper..."
+            gradle wrapper --gradle-version 7.6.3
+            chmod +x gradlew
+          fi
+          cd ..
           
           # Create minimal build.gradle (root)
           cat > android/build.gradle << 'EOF'
@@ -128,6 +142,10 @@ workflows:
               }
           
               buildTypes {
+                  debug {
+                      minifyEnabled false
+                      shrinkResources false
+                  }
                   release {
                       signingConfig signingConfigs.debug
                       minifyEnabled false
@@ -147,49 +165,71 @@ workflows:
           
           echo "=== Android setup complete ==="
           
-      - name: Generate Isar files
+      - name: Direct Gradle build with error logging
         script: |
-          echo "=== Generating Isar schema files ==="
-          flutter packages pub run build_runner build --delete-conflicting-outputs || echo "Build runner failed, continuing..."
-        
-      - name: Build APK
-        script: |
-          echo "=== Building APK ==="
-          flutter build apk --debug --verbose
+          echo "=== Building directly with Gradle ==="
+          cd android
           
-      - name: Find and copy APK
+          echo "Gradle version:"
+          ./gradlew --version
+          
+          echo "Available tasks:"
+          ./gradlew tasks --all | head -20
+          
+          echo "Building debug APK with full error logging:"
+          ./gradlew assembleDebug --stacktrace --info --warning-mode all 2>&1 | tee ../gradle_build.log
+          
+          echo "=== Gradle build completed ==="
+          cd ..
+          
+      - name: Show detailed build errors
         script: |
-          echo "=== Looking for APK files ==="
+          echo "=== Showing build errors ==="
+          
+          if [ -f gradle_build.log ]; then
+            echo "=== GRADLE BUILD LOG ==="
+            cat gradle_build.log | tail -200
+            echo "=== END GRADLE BUILD LOG ==="
+            
+            echo "=== LOOKING FOR SPECIFIC ERRORS ==="
+            grep -i "error\|failed\|exception" gradle_build.log | head -20 || echo "No error patterns found"
+            
+            echo "=== LOOKING FOR COMPILATION ERRORS ==="
+            grep -A 5 -B 5 "compilation" gradle_build.log || echo "No compilation errors found"
+            
+            echo "=== LOOKING FOR ISAR ERRORS ==="
+            grep -A 5 -B 5 -i "isar" gradle_build.log || echo "No Isar errors found"
+          else
+            echo "No gradle build log found"
+          fi
+          
+      - name: Try Flutter build anyway
+        script: |
+          echo "=== Trying Flutter build anyway ==="
+          flutter build apk --debug --verbose 2>&1 || echo "Flutter build failed as expected"
+          
+      - name: Find and copy any APK files
+        script: |
+          echo "=== Looking for any APK files ==="
           find . -name "*.apk" -type f
           
           # Create artifacts directory
           mkdir -p artifacts
           
-          # Look for APK in multiple locations
-          if [ -f "android/app/build/outputs/apk/debug/app-debug.apk" ]; then
-            cp "android/app/build/outputs/apk/debug/app-debug.apk" artifacts/
-            echo "✅ Debug APK copied!"
-          elif [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
-            cp "android/app/build/outputs/apk/release/app-release.apk" artifacts/
-            echo "✅ Release APK copied!"
+          # Copy any APK we find
+          APK_FILE=$(find . -name "*.apk" -type f | head -1)
+          if [ -n "$APK_FILE" ]; then
+            cp "$APK_FILE" artifacts/app.apk
+            echo "✅ APK copied from: $APK_FILE"
+            ls -la artifacts/
           else
-            echo "❌ No APK found in expected locations"
-            echo "Checking all possible locations:"
-            find android -name "*.apk" -type f | head -10
+            echo "❌ No APK files found anywhere"
             
-            # Copy any APK we find
-            APK_FILE=$(find android -name "*.apk" -type f | head -1)
-            if [ -n "$APK_FILE" ]; then
-              cp "$APK_FILE" artifacts/app.apk
-              echo "✅ APK copied from: $APK_FILE"
-            else
-              echo "❌ No APK files found anywhere"
-              exit 1
-            fi
+            echo "=== Checking build directory structure ==="
+            ls -la android/app/build/ 2>/dev/null || echo "No build directory"
+            ls -la android/app/build/outputs/ 2>/dev/null || echo "No outputs directory"
           fi
-          
-          echo "Final artifacts:"
-          ls -la artifacts/
           
     artifacts:
       - artifacts/*.apk
+      - gradle_build.log
