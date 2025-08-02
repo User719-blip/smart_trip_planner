@@ -1,24 +1,6 @@
 # Add project specific ProGuard rules here.
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.kts.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
-
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
 
 # Flutter specific rules
 -keep class io.flutter.app.** { *; }
@@ -28,3 +10,24 @@
 -keep class io.flutter.**  { *; }
 -keep class io.flutter.plugins.**  { *; }
 -dontwarn io.flutter.embedding.**
+
+# Isar specific rules
+-keep class io.isar.** { *; }
+-keep @io.isar.annotation.Collection class * { *; }
+-keep class **\$*.class { *; }
+
+# Keep all classes with Isar annotations
+-keep @io.isar.annotation.* class * { *; }
+
+# Keep generated Isar files
+-keep class **.*Schema { *; }
+-keep class **.*Adapter { *; }
+
+# Keep your model classes (replace with your actual package)
+-keep class com.example.smart_trip_planner.feature.trip.data.models.** { *; }
+
+# Additional safety for reflection
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses

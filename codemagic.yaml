@@ -5,29 +5,43 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
+      groups:
+        # Add environment variables if needed
+        - app_credentials
     scripts:
       - name: Clean project
         script: flutter clean
+        
       - name: Get Flutter packages
         script: flutter pub get
         
-      - name: Build APK (ignore Flutter's file detection error)
+      - name: Generate Isar files
+        script: |
+          echo "=== Generating Isar schema files ==="
+          flutter packages pub run build_runner build --delete-conflicting-outputs
+        
+      - name: Build APK
         script: |
           echo "=== Building APK ==="
-          # Run flutter build but ignore the exit code since Gradle succeeds
-          flutter build apk --release --verbose || true
+          flutter build apk --release --verbose
           
-      - name: Find and copy APK from Android build directory
+          # Check if build was successful
+          if [ $? -eq 0 ]; then
+            echo "✅ Build completed successfully"
+          else
+            echo "❌ Build failed"
+            exit 1
+          fi
+          
+      - name: Find and copy APK
         script: |
           echo "=== Looking for APK in Android build outputs ==="
           
-          # Check the actual Android build output directory
           APK_DIR="android/app/build/outputs/apk/release"
           if [ -d "$APK_DIR" ]; then
             echo "Found APK directory: $APK_DIR"
             ls -la "$APK_DIR"
             
-            # Find the APK file
             APK_FILE=$(find "$APK_DIR" -name "*.apk" | head -1)
             if [ -n "$APK_FILE" ]; then
               echo "Found APK: $APK_FILE"
@@ -37,16 +51,19 @@ workflows:
               echo "✅ APK successfully copied!"
             else
               echo "❌ No APK file found in $APK_DIR"
+              ls -la "$APK_DIR"
               exit 1
             fi
           else
             echo "❌ APK directory $APK_DIR not found"
             echo "Searching all possible locations..."
             find android/app/build -name "*.apk" -type f 2>/dev/null || echo "No APK files found anywhere"
+            # Show the actual build structure
+            echo "Build directory structure:"
+            find android/app/build -type d 2>/dev/null | head -20
             exit 1
           fi
           
     artifacts:
       - artifacts/*.apk
       - android/app/build/outputs/apk/release/*.apk
-      - android/app/build/outputs/**/*.apk

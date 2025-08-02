@@ -48,10 +48,16 @@ android {
             isDebuggable = true
         }
         getByName("release") {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true  // Enable minification
+            isShrinkResources = true  // Enable resource shrinking
             isDebuggable = false
-            signingConfig = signingConfigs.getByName("debug") // Use debug signing for now
+            signingConfig = signingConfigs.getByName("release") // Use release signing
+            
+            // Add proguard files
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
