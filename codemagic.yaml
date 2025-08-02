@@ -1,352 +1,52 @@
 workflows:
   android-workflow:
     name: Android Workflow
-    max_build_duration: 60
+    max_build_duration: 120
+    instance_type: mac_mini_m2
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Clean project
+      - name: Set up local.properties
         script: |
-          echo "=== Cleaning project ==="
-          flutter clean
+          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
           
       - name: Get Flutter packages
         script: |
-          echo "=== Getting Flutter packages ==="
           flutter pub get
-        
-      - name: Generate Isar files (if needed)
+          
+      - name: Generate code if needed (Isar, build_runner)
         script: |
-          echo "=== Checking for build_runner dependency ==="
           if grep -q "build_runner" pubspec.yaml; then
-            echo "Found build_runner, generating files..."
+            echo "Running build_runner for code generation..."
             flutter packages pub run build_runner build --delete-conflicting-outputs
           else
             echo "No build_runner dependency found, skipping code generation"
           fi
+          
+      - name: Flutter analyze
+        script: |
+          flutter analyze
+          
+      - name: Flutter unit tests
+        script: |
+          flutter test
+        ignore_failure: true
         
-      - name: Verify Android configuration
+      - name: Build debug APK
         script: |
-          echo "=== Verifying Android configuration ==="
-          
-          # Check if Android directory exists
-          if [ ! -d "android" ]; then
-            echo "❌ Android directory missing!"
-            exit 1
-          fi
-          
-          # Check critical Android files
-          echo "Checking Android files:"
-          ls -la android/
-          ls -la android/app/
-          
-          # Verify gradle wrapper
-          if [ ! -f "android/gradlew" ]; then
-            echo "Creating gradle wrapper..."
-            cd android
-            gradle wrapper --gradle-version 7.6.3
-            chmod +x gradlew
-            cd ..
-          fi
-          
-      - name: Fix Android Gradle files and deprecated options
-        script: |
-          echo "=== Fixing Android Gradle configuration ==="
-          
-          # Remove deprecated gradle.properties options
-          echo "Checking and fixing gradle.properties..."
-          if [ -f "android/gradle.properties" ]; then
-            echo "Original gradle.properties:"
-            cat android/gradle.properties
-            
-            # Remove deprecated options
-            grep -v "android.enableR8" android/gradle.properties > android/gradle.properties.tmp || true
-            grep -v "android.useAndroidX" android/gradle.properties.tmp > android/gradle.properties.tmp2 || true
-            mv android/gradle.properties.tmp2 android/gradle.properties 2>/dev/null || mv android/gradle.properties.tmp android/gradle.properties 2>/dev/null || true
-            rm -f android/gradle.properties.tmp android/gradle.properties.tmp2 2>/dev/null || true
-            
-            echo "Fixed gradle.properties:"
-            cat android/gradle.properties
-          fi
-          
-          # Create/fix gradle.properties with correct settings
-          cat > android/gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx4G -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError
-          android.useAndroidX=true
-          android.enableJetifier=true
-          android.compileSdkVersion=34
-          android.targetSdkVersion=34
-          android.buildToolsVersion=34.0.0
-          org.gradle.parallel=true
-          org.gradle.daemon=true
-          EOF
-          
-          cd android
-          
-          # Update root build.gradle with compatible versions
-          echo "Creating compatible root build.gradle"
-          cat > build.gradle << 'EOF'
-          buildscript {
-              ext.kotlin_version = '1.8.22'
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.1.4'
-                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-              }
-          }
-          
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          
-          rootProject.buildDir = '../build'
-          subprojects {
-              project.buildDir = "${rootProject.buildDir}/${project.name}"
-          }
-          subprojects {
-              project.evaluationDependsOn(':app')
-          }
-          
-          task clean(type: Delete) {
-              delete rootProject.buildDir
-          }
-          EOF
-          
-          # Update app/build.gradle with compatible settings
-          echo "Creating compatible app/build.gradle"
-          cat > app/build.gradle << 'EOF'
-          def localProperties = new Properties()
-          def localPropertiesFile = rootProject.file('local.properties')
-          if (localPropertiesFile.exists()) {
-              localPropertiesFile.withReader('UTF-8') { reader ->
-                  localProperties.load(reader)
-              }
-          }
-          
-          def flutterRoot = localProperties.getProperty('flutter.sdk')
-          if (flutterRoot == null) {
-              throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
-          }
-          
-          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-          if (flutterVersionCode == null) {
-              flutterVersionCode = '1'
-          }
-          
-          def flutterVersionName = localProperties.getProperty('flutter.versionName')
-          if (flutterVersionName == null) {
-              flutterVersionName = '1.0'
-          }
-          
-          apply plugin: 'com.android.application'
-          apply plugin: 'kotlin-android'
-          apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
-          
-          android {
-              namespace "com.example.smart_trip_planner"
-              compileSdk 34
-              ndkVersion flutter.ndkVersion
-          
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_1_8
-                  targetCompatibility JavaVersion.VERSION_1_8
-              }
-          
-              kotlinOptions {
-                  jvmTarget = '1.8'
-              }
-          
-              sourceSets {
-                  main.java.srcDirs += 'src/main/kotlin'
-              }
-          
-              defaultConfig {
-                  applicationId "com.example.smart_trip_planner"
-                  minSdkVersion flutter.minSdkVersion
-                  targetSdkVersion flutter.targetSdkVersion
-                  versionCode flutterVersionCode.toInteger()
-                  versionName flutterVersionName
-              }
-          
-              buildTypes {
-                  debug {
-                      minifyEnabled false
-                      shrinkResources false
-                  }
-                  release {
-                      minifyEnabled false
-                      shrinkResources false
-                      signingConfig signingConfigs.debug
-                  }
-              }
-          }
-          
-          flutter {
-              source '../..'
-          }
-          
-          dependencies {
-              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-          }
-          EOF
-          
-          # Update settings.gradle
-          echo "Creating compatible settings.gradle"
-          cat > settings.gradle << 'EOF'
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          
-          include ':app'
-          
-          def localPropertiesFile = new File(rootProject.projectDir, "local.properties")
-          def properties = new Properties()
-          
-          assert localPropertiesFile.exists()
-          localPropertiesFile.withReader("UTF-8") { reader -> properties.load(reader) }
-          
-          def flutterSdkPath = properties.getProperty("flutter.sdk")
-          assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-          apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"
-          EOF
-          
-          # Update gradle wrapper to compatible version
-          echo "Updating gradle wrapper to compatible version..."
-          ./gradlew wrapper --gradle-version 8.3
-          
-          cd ..
-          
-      - name: Validate Flutter project
-        script: |
-          echo "=== Validating Flutter project ==="
-          
-          # Check pubspec.yaml
-          if [ ! -f "pubspec.yaml" ]; then
-            echo "❌ pubspec.yaml not found!"
-            exit 1
-          fi
-          
-          # Verify Flutter can analyze the project
-          flutter analyze --no-fatal-infos || echo "Analysis completed with warnings"
-          
-          # Check for common issues
-          echo "=== Checking for common issues ==="
-          if grep -r "import.*dart:html" lib/; then
-            echo "⚠️  Warning: Found web-specific imports in lib/"
-          fi
-          
-      - name: Build APK with detailed logging
-        script: |
-          echo "=== Building APK with Flutter ==="
-          
-          # Clean any previous build artifacts
-          flutter clean
-          flutter pub get
-          
-          # Set environment variables for better error reporting
-          export FLUTTER_BUILD_MODE=debug
-          export GRADLE_OPTS="-Xmx4g -Dorg.gradle.daemon=false"
-          
-          # Show Flutter and Gradle versions
-          echo "Flutter version:"
-          flutter --version
-          
-          echo "Gradle version:"
-          cd android && ./gradlew --version && cd ..
-          
-          # Try Flutter build first (preferred method)
-          echo "Attempting Flutter build..."
-          if flutter build apk --debug --verbose --no-shrink --no-tree-shake-icons 2>&1 | tee flutter_build.log; then
-            echo "✅ Flutter build succeeded!"
-          else
-            echo "❌ Flutter build failed, checking specific errors..."
-            
-            # Show specific error patterns
-            echo "=== Detailed Error Analysis ==="
-            if grep -i "enableR8" flutter_build.log; then
-              echo "❌ R8 deprecation error found - this should be fixed now"
-            fi
-            
-            if grep -i "namespace" flutter_build.log; then
-              echo "❌ Namespace error found - this should be fixed now"
-            fi
-            
-            if grep -i "compileSdk" flutter_build.log; then
-              echo "❌ CompileSdk error found - this should be fixed now"
-            fi
-            
-            # Try direct Gradle build as fallback
-            echo "Trying direct Gradle build..."
-            cd android
-            ./gradlew clean
-            ./gradlew assembleDebug --stacktrace --info --warning-mode all 2>&1 | tee ../gradle_build.log
-            cd ..
-          fi
-          
-      - name: Locate and verify APK
-        script: |
-          echo "=== Locating APK files ==="
-          
-          # Search for APK files
-          APK_FILES=$(find . -name "*.apk" -type f)
-          
-          if [ -n "$APK_FILES" ]; then
-            echo "✅ Found APK files:"
-            echo "$APK_FILES"
-            
-            # Create artifacts directory
-            mkdir -p artifacts
-            
-            # Copy the main APK
-            MAIN_APK=$(echo "$APK_FILES" | grep -E "(app-debug|app-release)" | head -1)
-            if [ -n "$MAIN_APK" ]; then
-              cp "$MAIN_APK" artifacts/app-debug.apk
-              echo "✅ Main APK copied: $MAIN_APK"
-            else
-              # Copy any APK found
-              FIRST_APK=$(echo "$APK_FILES" | head -1)
-              cp "$FIRST_APK" artifacts/app-debug.apk
-              echo "✅ APK copied: $FIRST_APK"
-            fi
-            
-            # Show APK details
-            ls -la artifacts/
-            echo "APK size: $(du -h artifacts/app-debug.apk | cut -f1)"
-            
-          else
-            echo "❌ No APK files found!"
-            echo "=== Debugging information ==="
-            
-            # Show build directory structure
-            echo "Build directory contents:"
-            find . -name "build" -type d -exec ls -la {} \; 2>/dev/null || echo "No build directories found"
-            
-            # Show detailed error logs
-            if [ -f flutter_build.log ]; then
-              echo "=== Flutter build errors ==="
-              grep -i "error\|exception\|failed" flutter_build.log | tail -10
-            fi
-            
-            if [ -f gradle_build.log ]; then
-              echo "=== Gradle build errors ==="
-              grep -i "error\|exception\|failed" gradle_build.log | tail -10
-            fi
-            
-            exit 1
-          fi
+          flutter build apk --debug
           
     artifacts:
-      - artifacts/*.apk
-      - "*.log"
+      - build/**/outputs/**/*.apk
+      - build/**/outputs/**/mapping.txt
+      - flutter_drive.log
+      
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
