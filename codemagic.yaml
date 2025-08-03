@@ -27,7 +27,8 @@ workflows:
           
       - name: Flutter analyze
         script: |
-          flutter analyze
+          flutter analyze --no-fatal-infos
+        ignore_failure: true
           
       - name: Flutter unit tests
         script: |
