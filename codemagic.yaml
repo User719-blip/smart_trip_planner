@@ -17,8 +17,8 @@ workflows:
             echo "Original gradle.properties:"
             cat android/gradle.properties
             
-            # Remove the deprecated line
-            grep -v "android.enableR8" android/gradle.properties > android/gradle.properties.tmp
+            # Remove the deprecated line if it exists
+            grep -v "android.enableR8" android/gradle.properties > android/gradle.properties.tmp 2>/dev/null || cp android/gradle.properties android/gradle.properties.tmp
             mv android/gradle.properties.tmp android/gradle.properties
             
             echo "Fixed gradle.properties:"
@@ -28,7 +28,7 @@ workflows:
           # Downgrade Android Gradle Plugin for Isar compatibility
           echo "Updating build.gradle for Isar compatibility..."
           
-          # Update root build.gradle
+          # Update root build.gradle - keep it simple and compatible
           cat > android/build.gradle << 'EOF'
           buildscript {
               ext.kotlin_version = '1.8.10'
@@ -50,12 +50,20 @@ workflows:
               }
           }
           
+          rootProject.buildDir = '../build'
+          subprojects {
+              project.buildDir = "${rootProject.buildDir}/${project.name}" 
+          }
+          subprojects {
+              project.evaluationDependsOn(':app')
+          }
+          
           task clean(type: Delete) {
               delete rootProject.buildDir
           }
           EOF
           
-          # Update settings.gradle for AGP 7.x
+          # Update settings.gradle - use traditional approach
           cat > android/settings.gradle << 'EOF'
           include ':app'
           
@@ -70,7 +78,7 @@ workflows:
           apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"
           EOF
           
-          # Update app/build.gradle to remove namespace (not needed in AGP 7.x)
+          # Update app/build.gradle - remove modern plugin syntax and namespace
           cat > android/app/build.gradle << 'EOF'
           def localProperties = new Properties()
           def localPropertiesFile = rootProject.file('local.properties')
@@ -85,13 +93,23 @@ workflows:
               throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
           }
           
+          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+          if (flutterVersionCode == null) {
+              flutterVersionCode = '1'
+          }
+          
+          def flutterVersionName = localProperties.getProperty('flutter.versionName')
+          if (flutterVersionName == null) {
+              flutterVersionName = '1.0'
+          }
+          
           apply plugin: 'com.android.application'
           apply plugin: 'kotlin-android'
           apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
           
           android {
-              compileSdkVersion 34
-              ndkVersion "25.1.8937393"
+              compileSdkVersion flutter.compileSdkVersion
+              ndkVersion flutter.ndkVersion
           
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_1_8
@@ -102,45 +120,21 @@ workflows:
                   jvmTarget = '1.8'
               }
           
-              defaultConfig {
-                  applicationId "com.example.smart_trip_planner"
-                  minSdkVersion 21
-                  targetSdkVersion 34
-                  versionCode 1
-                  versionName "1.0"
-                  
-                  ndk {
-                      abiFilters 'armeabi-v7a', 'arm64-v8a'
-                  }
+              sourceSets {
+                  main.java.srcDirs += 'src/main/kotlin'
               }
           
-              signingConfigs {
-                  debug {
-                      storeFile file('debug.keystore')
-                      storePassword 'android'
-                      keyAlias 'androiddebugkey'
-                      keyPassword 'android'
-                  }
-                  release {
-                      storeFile file('debug.keystore')
-                      storePassword 'android'
-                      keyAlias 'androiddebugkey'
-                      keyPassword 'android'
-                  }
+              defaultConfig {
+                  applicationId "com.example.smart_trip_planner"
+                  minSdkVersion flutter.minSdkVersion
+                  targetSdkVersion flutter.targetSdkVersion
+                  versionCode flutterVersionCode.toInteger()
+                  versionName flutterVersionName
               }
           
               buildTypes {
-                  debug {
-                      minifyEnabled false
-                      shrinkResources false
-                      debuggable true
-                      signingConfig signingConfigs.debug
-                  }
                   release {
-                      minifyEnabled false
-                      shrinkResources false
-                      debuggable false
-                      signingConfig signingConfigs.release
+                      signingConfig signingConfigs.debug
                   }
               }
           }
@@ -151,7 +145,6 @@ workflows:
           
           dependencies {
               implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-              implementation 'androidx.core:core-ktx:1.8.0'
           }
           EOF
           
@@ -201,7 +194,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-iamfake1815@gmail.com
+          - your-email@example.com
         notify:
           success: true
           failure: true
