@@ -24,41 +24,6 @@ workflows:
             cat android/gradle.properties
           fi
           
-          # Use AGP 8.1.0 but with proper namespace configuration for Isar
-          echo "Updating build.gradle for modern Flutter with Isar support..."
-          
-          # Keep the existing modern build.gradle but ensure compatibility
-          cat > android/build.gradle << 'EOF'
-          buildscript {
-              ext.kotlin_version = '1.8.10'
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.3.0'
-                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-              }
-          }
-          
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          
-          rootProject.buildDir = '../build'
-          subprojects {
-              project.buildDir = "${rootProject.buildDir}/${project.name}"
-          }
-          
-          task clean(type: Delete) {
-              delete rootProject.buildDir
-          }
-          EOF
-          
       - name: Set up local.properties
         script: |
           echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
