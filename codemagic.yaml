@@ -78,7 +78,7 @@ workflows:
           
       - name: Build debug APK
         script: |
-          flutter build apk --debug
+          flutter build apk --debug --android-skip-build-dependency-validation
           
     artifacts:
       - build/**/outputs/**/*.apk
