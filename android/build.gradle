@@ -6,7 +6,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.0'
+        classpath 'com.android.tools.build:gradle:8.3.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
@@ -18,6 +18,19 @@ allprojects {
     }
 }
 
-tasks.register("clean", Delete) {
-    delete rootProject.layout.buildDirectory
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    if (project.hasProperty('android')) {
+        project.android {
+            // Directly configure namespace without using afterEvaluate
+            if (!hasProperty('namespace') || namespace == null || namespace.isEmpty()) {
+                namespace = "com.example.${project.name}"
+            }
+        }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
 }
