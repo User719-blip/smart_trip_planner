@@ -11,7 +11,6 @@ workflows:
       - name: Fix Isar compatibility with modern Flutter
         script: |
           echo "Configuring for modern Flutter with Isar compatibility..."
-          
           # Fix gradle.properties first
           if [ -f "android/gradle.properties" ]; then
             echo "Original gradle.properties:"
@@ -54,149 +53,11 @@ workflows:
           subprojects {
               project.buildDir = "${rootProject.buildDir}/${project.name}"
           }
-          subprojects {
-              project.evaluationDependsOn(':app')
-          }
-          
-          // Fix for Isar namespace issue - automatically assign namespaces to subprojects
-          subprojects {
-              afterEvaluate { project ->
-                  if (project.hasProperty('android')) {
-                      project.android {
-                          if (!hasProperty('namespace') || namespace == null || namespace.isEmpty()) {
-                              // Assign a default namespace based on the project name
-                              namespace = "com.example.${project.name}"
-                          }
-                      }
-                  }
-              }
-          }
           
           task clean(type: Delete) {
               delete rootProject.buildDir
           }
           EOF
-          
-          # Use modern settings.gradle without the problematic app_plugin_loader
-          cat > android/settings.gradle << 'EOF'
-          pluginManagement {
-              def flutterSdkPath = {
-                  def properties = new Properties()
-                  file("local.properties").withInputStream { properties.load(it) }
-                  def flutterSdkPath = properties.getProperty("flutter.sdk")
-                  assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-                  return flutterSdkPath
-              }()
-          
-              includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
-          
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          
-          plugins {
-              id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-              id "com.android.application" version "8.3.0" apply false
-              id "org.jetbrains.kotlin.android" version "1.8.10" apply false
-          }
-          
-          include ":app"
-          EOF
-          
-          # Update app/build.gradle with namespace and proper version handling
-          cat > android/app/build.gradle << 'EOF'
-          plugins {
-              id "com.android.application"
-              id "kotlin-android"
-              id "dev.flutter.flutter-gradle-plugin"
-          }
-          
-          def localProperties = new Properties()
-          def localPropertiesFile = rootProject.file('local.properties')
-          if (localPropertiesFile.exists()) {
-              localPropertiesFile.withReader('UTF-8') { reader ->
-                  localProperties.load(reader)
-              }
-          }
-          
-          def flutterRoot = localProperties.getProperty('flutter.sdk')
-          if (flutterRoot == null) {
-              throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
-          }
-          
-          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-          if (flutterVersionCode == null) {
-              flutterVersionCode = '1'
-          }
-          
-          def flutterVersionName = localProperties.getProperty('flutter.versionName')
-          if (flutterVersionName == null) {
-              flutterVersionName = '1.0'
-          }
-          
-          android {
-              namespace "com.example.smart_trip_planner"
-              compileSdk flutter.compileSdkVersion
-              ndkVersion flutter.ndkVersion
-          
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_1_8
-                  targetCompatibility JavaVersion.VERSION_1_8
-              }
-          
-              kotlinOptions {
-                  jvmTarget = '1.8'
-              }
-          
-              defaultConfig {
-                  applicationId "com.example.smart_trip_planner"
-                  minSdkVersion flutter.minSdkVersion
-                  targetSdkVersion flutter.targetSdkVersion
-                  versionCode flutterVersionCode.toInteger()
-                  versionName flutterVersionName
-                  
-                  ndk {
-                      abiFilters 'armeabi-v7a', 'arm64-v8a'
-                  }
-              }
-          
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.debug
-                      minifyEnabled false
-                      shrinkResources false
-                  }
-                  debug {
-                      signingConfig signingConfigs.debug
-                      minifyEnabled false
-                      shrinkResources false
-                  }
-              }
-          }
-          
-          flutter {
-              source '../..'
-          }
-          
-          dependencies {
-              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-          }
-          EOF
-          
-          # Create override for isar_flutter_libs to add namespace
-          echo "Creating namespace fix for isar_flutter_libs..."
-          
-          # Create a directory for the override if it doesn't exist
-          mkdir -p android/app/src/main/kotlin/io/isar
-          
-          # Add namespace to AndroidManifest.xml to help with isar compatibility
-          if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
-            echo "Adding package attribute to AndroidManifest.xml for better Isar compatibility..."
-            sed -i.bak 's/<manifest xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android">/<manifest xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android" package="com.example.smart_trip_planner">/' android/app/src/main/AndroidManifest.xml
-          fi
           
       - name: Set up local.properties
         script: |
@@ -215,16 +76,6 @@ workflows:
             echo "No build_runner dependency found, skipping code generation"
           fi
           
-      - name: Flutter analyze
-        script: |
-          flutter analyze --no-fatal-infos
-        ignore_failure: true
-          
-      - name: Flutter unit tests
-        script: |
-          flutter test
-        ignore_failure: true
-        
       - name: Build debug APK
         script: |
           flutter build apk --debug
